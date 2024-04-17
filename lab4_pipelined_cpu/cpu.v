@@ -23,7 +23,7 @@ module cpu(input reset,       // positive reset signal
   wire [4:0] rs1;
   wire [4:0] rs2;
   wire [4:0] rd;
-  wire is_Sub;
+  wire is_sub;
   wire [2:0] funct3;
   wire [31:0] full_instruction;
   wire [31:0] immediate;
@@ -43,6 +43,8 @@ module cpu(input reset,       // positive reset signal
   wire [31:0] alu_result;
 
   wire [31:0] dmem_dout;
+
+  wire [31:0] reg_write_data;
 
   /***** Register declarations *****/
   // You need to modify the width of registers
@@ -89,9 +91,9 @@ module cpu(input reset,       // positive reset signal
   reg MEM_WB_mem_to_reg;    // will be used in WB stage
   reg MEM_WB_reg_write;     // will be used in WB stage
   // From others
-  reg MEM_WB_mem_to_reg_src_1;
-  reg MEM_WB_mem_to_reg_src_2;
-
+  reg [31:0] MEM_WB_mem_to_reg_src_1;
+  reg [31:0] MEM_WB_mem_to_reg_src_2;
+  reg [4:0] MEM_WB_rd;
   // ---------- Update program counter ----------
   // PC must be updated on the rising edge (positive edge) of the clock.
   ConditionalRegister pc(
@@ -144,8 +146,8 @@ module cpu(input reset,       // positive reset signal
     .clk (clk),          // input
     .rs1 (rs1),          // input
     .rs2 (rs2),          // input
-    .rd (),           // input
-    .rd_din (),       // input
+    .rd (MEM_WB_rd),           // input
+    .rd_din (reg_write_data),       // input
     .write_enable (MEM_WB_mem_to_reg),    // input
     .rs1_dout (rs1_dout),     // output
     .rs2_dout (rs2_dout),      // output
@@ -275,16 +277,26 @@ module cpu(input reset,       // positive reset signal
     if (reset) begin
       MEM_WB_mem_to_reg <= 1'b0;
       MEM_WB_reg_write <= 1'b0;
+
       MEM_WB_mem_to_reg_src_1 <= 32'b0;
       MEM_WB_mem_to_reg_src_2 <= 32'b0;
     end
     else begin
       MEM_WB_mem_to_reg <= EX_MEM_mem_to_reg;
       MEM_WB_reg_write <= EX_MEM_reg_write;
+      
       MEM_WB_mem_to_reg_src_1 <= EX_MEM_alu_out;
       MEM_WB_mem_to_reg_src_2 <= dmem_dout;
+      MEM_WB_rd <= EX_MEM_rd;
     end
   end
 
+  // ---------- Write Back ----------
+  Mux2_1 mem_to_reg_mux(
+    .in_0(MEM_WB_mem_to_reg_src_1),
+    .in_1(MEM_WB_mem_to_reg_src_2),
+    .cond(MEM_WB_mem_to_reg),
+    .out(reg_write_data)
+  );
   
 endmodule
