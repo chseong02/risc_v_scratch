@@ -73,15 +73,15 @@ module cpu(input reset,       // positive reset signal
   Adder pc_adder(
     .in_1(pc_out),  // input
     .in_2(32'd4),   // input
-    .out(pc_in),    // output
+    .out(pc_in)     // output
   );
   
   // ---------- Instruction Memory ----------
   InstMemory imem(
     .reset(reset),   // input
-    .clk(clk),     // input
-    .addr(pc_out),    // input
-    .dout(imem_dout)     // output
+    .clk(clk),       // input
+    .addr(pc_out),   // input
+    .dout(imem_dout) // output
   );
 
   // Update IF/ID pipeline registers here
