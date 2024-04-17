@@ -14,9 +14,22 @@ module cpu(input reset,       // positive reset signal
            output [31:0]print_reg[0:31]); // Whehther to finish simulation
   /***** Wire declarations *****/
   wire pc_update_cond;
-  wire pc_in;
-  wire pc_out;
-  wire imem_dout;
+  wire [31:0] pc_in;
+  wire [31:0] pc_out;
+  wire [31:0] imem_dout;
+
+  wire opcode;
+  wire [6:0] opcode;
+  wire [4:0] rs1;
+  wire [4:0] rs2;
+  wire [4:0] rd;
+  wire is_Sub;
+  wire [2:0] funct3;
+  wire [31:0] full_instruction;
+  wire [31:0] immediate;
+  wire [31:0] rs1_dout;
+  wire [31:0] rs2_dout;
+  wire 
 
   /***** Register declarations *****/
   // You need to modify the width of registers
@@ -24,7 +37,7 @@ module cpu(input reset,       // positive reset signal
   // 1. You might need other pipeline registers that are not described below
   // 2. You might not need registers described below
   /***** IF/ID pipeline registers *****/
-  reg IF_ID_inst;           // will be used in ID stage
+  reg [31:0] IF_ID_inst;           // will be used in ID stage
   /***** ID/EX pipeline registers *****/
   // From the control unit
   reg ID_EX_alu_op;         // will be used in EX stage
@@ -34,11 +47,14 @@ module cpu(input reset,       // positive reset signal
   reg ID_EX_mem_to_reg;     // will be used in WB stage
   reg ID_EX_reg_write;      // will be used in WB stage
   // From others
-  reg ID_EX_rs1_data;
-  reg ID_EX_rs2_data;
-  reg ID_EX_imm;
+  reg [31:0] ID_EX_rs1_data;
+  reg [31:0] ID_EX_rs2_data;
+  reg [31:0] ID_EX_imm;
   reg ID_EX_ALU_ctrl_unit_input;
-  reg ID_EX_rd;
+  reg ID_EX_is_sub;
+  reg [2:0] ID_EX_funct3;
+  reg [6:0] ID_EX_opcode;
+  reg [4:0] ID_EX_rd;
 
   /***** EX/MEM pipeline registers *****/
   // From the control unit
@@ -94,17 +110,29 @@ module cpu(input reset,       // positive reset signal
     end
   end
 
+  // ---------- Instruction Decoder ----------
+  InstructionDecoder decoder(
+    .instruction(IF_ID_inst),
+    .opcode(opcode),
+    .rs1(rs1),
+    .rs2(rs2),
+    .rd(rd),
+    .is_sub(is_sub),
+    .funct3(funct3),
+    .full_instruction(full_instruction)
+  );
+
   // ---------- Register File ----------
   RegisterFile reg_file (
-    .reset (),        // input
-    .clk (),          // input
-    .rs1 (),          // input
-    .rs2 (),          // input
+    .reset (reset),        // input
+    .clk (clk),          // input
+    .rs1 (rs1),          // input
+    .rs2 (rs2),          // input
     .rd (),           // input
     .rd_din (),       // input
-    .write_enable (),    // input
-    .rs1_dout (),     // output
-    .rs2_dout (),      // output
+    .write_enable (MEM_WB_mem_to_reg),    // input
+    .rs1_dout (rs1_dout),     // output
+    .rs2_dout (rs2_dout),      // output
     .print_reg(print_reg)
   );
 
@@ -124,15 +152,31 @@ module cpu(input reset,       // positive reset signal
 
   // ---------- Immediate Generator ----------
   ImmediateGenerator imm_gen(
-    .part_of_inst(),  // input
-    .imm_gen_out()    // output
+    .part_of_inst(full_instruction),  // input
+    .imm_gen_out(immediate)    // output
   );
 
   // Update ID/EX pipeline registers here
   always @(posedge clk) begin
     if (reset) begin
+      ID_EX_rs1_data <= 32'b0;
+      ID_EX_rs2_data <= 32'b0;
+      ID_EX_imm <= 32'b0;
+      ID_EX_rd <= 32'b0;
+      ID_EX_is_sub <= 1'b0;
+      ID_EX_funct3 <= 3'b0;
+      ID_EX_opcode <= 7'b0;
+      ID_EX_rd <= 5'b0;
     end
     else begin
+      ID_EX_rs1_data <= rs1_dout;
+      ID_EX_rs2_data <= rs2_dout;
+      ID_EX_imm <= immediate;
+      ID_EX_rd <= rd;
+      ID_EX_is_sub <= is_sub;
+      ID_EX_funct3 <= funct3;
+      ID_EX_opcode <= opcode;
+      ID_EX_rd <= rd;
     end
   end
 
