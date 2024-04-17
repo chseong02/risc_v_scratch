@@ -13,6 +13,11 @@ module cpu(input reset,       // positive reset signal
            output is_halted, // Whehther to finish simulation
            output [31:0]print_reg[0:31]); // Whehther to finish simulation
   /***** Wire declarations *****/
+  wire pc_update_cond;
+  wire pc_in;
+  wire pc_out;
+  wire imem_dout;
+
   /***** Register declarations *****/
   // You need to modify the width of registers
   // In addition, 
@@ -57,26 +62,35 @@ module cpu(input reset,       // positive reset signal
 
   // ---------- Update program counter ----------
   // PC must be updated on the rising edge (positive edge) of the clock.
-  PC pc(
-    .reset(),       // input (Use reset to initialize PC. Initial value must be 0)
-    .clk(),         // input
-    .next_pc(),     // input
-    .current_pc()   // output
+  ConditionalRegister pc(
+    .reset(reset),         // input (Use reset to initialize PC. Initial value must be 0)
+    .clk(clk),             // input
+    .in(pc_in),            // input
+    .cond(pc_update_cond), // input
+    .out(pc_out)           // output
+  );
+
+  Adder pc_adder(
+    .in_1(pc_out),  // input
+    .in_2(32'd4),   // input
+    .out(pc_in),    // output
   );
   
   // ---------- Instruction Memory ----------
   InstMemory imem(
-    .reset(),   // input
-    .clk(),     // input
-    .addr(),    // input
-    .dout()     // output
+    .reset(reset),   // input
+    .clk(clk),     // input
+    .addr(pc_out),    // input
+    .dout(imem_dout)     // output
   );
 
   // Update IF/ID pipeline registers here
   always @(posedge clk) begin
     if (reset) begin
+      IF_ID_inst <= 32'b0;
     end
     else begin
+      IF_ID_inst <= imem_dout;
     end
   end
 
