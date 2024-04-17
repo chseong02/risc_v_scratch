@@ -38,6 +38,12 @@ module cpu(input reset,       // positive reset signal
   wire [1:0] alu_op;
   wire is_ecall;
 
+  wire [3:0] alu_operation;
+  wire [31:0] alu_in_2;
+  wire [31:0] alu_result;
+
+  wire [31:0] dmem_dout;
+
   /***** Register declarations *****/
   // You need to modify the width of registers
   // In addition, 
@@ -72,10 +78,11 @@ module cpu(input reset,       // positive reset signal
   reg EX_MEM_is_branch;     // will be used in MEM stage
   reg EX_MEM_mem_to_reg;    // will be used in WB stage
   reg EX_MEM_reg_write;     // will be used in WB stage
+  reg EX_MEM_is_ecall;
   // From others
-  reg EX_MEM_alu_out;
-  reg EX_MEM_dmem_data;
-  reg EX_MEM_rd;
+  reg [31:0] EX_MEM_alu_out;
+  reg [31:0] EX_MEM_dmem_data;
+  reg [4:0] EX_MEM_rd;
 
   /***** MEM/WB pipeline registers *****/
   // From the control unit
@@ -178,7 +185,6 @@ module cpu(input reset,       // positive reset signal
       ID_EX_rs1_data <= 32'b0;
       ID_EX_rs2_data <= 32'b0;
       ID_EX_imm <= 32'b0;
-      ID_EX_rd <= 32'b0;
       ID_EX_is_sub <= 1'b0;
       ID_EX_funct3 <= 3'b0;
       ID_EX_opcode <= 7'b0;
@@ -196,7 +202,6 @@ module cpu(input reset,       // positive reset signal
       ID_EX_rs1_data <= rs1_dout;
       ID_EX_rs2_data <= rs2_dout;
       ID_EX_imm <= immediate;
-      ID_EX_rd <= rd;
       ID_EX_is_sub <= is_sub;
       ID_EX_funct3 <= funct3;
       ID_EX_opcode <= opcode;
@@ -206,43 +211,78 @@ module cpu(input reset,       // positive reset signal
 
   // ---------- ALU Control Unit ----------
   ALUControlUnit alu_ctrl_unit (
-    .part_of_inst(),  // input
-    .alu_op()         // output
+    .part30_of_inst(ID_EX_is_sub),
+    .part14_12_of_inst(ID_EX_funct3),
+    .part6_0_of_inst(ID_EX_opcode),// input
+    .alu_op(ID_EX_alu_op),        
+    .alu_operation(alu_operation) // output
   );
 
   // ---------- ALU ----------
+  Mux2_1 alu_src_mux(
+    .in_0(ID_EX_rs2_data),
+    .in_1(ID_EX_imm),
+    .cond(ID_EX_alu_src),
+    .out(alu_in_2)
+  );
+
   ALU alu (
-    .alu_op(),      // input
-    .alu_in_1(),    // input  
-    .alu_in_2(),    // input
-    .alu_result(),  // output
-    .alu_zero()     // output
+    .alu_operation(alu_operation),      // input
+    .alu_in_1(ID_EX_rs1_data),    // input  
+    .alu_in_2(alu_in_2),    // input
+    .alu_result(alu_result)  // output
   );
 
   // Update EX/MEM pipeline registers here
   always @(posedge clk) begin
     if (reset) begin
+      EX_MEM_mem_read <= 1'b0;
+      EX_MEM_mem_to_reg <= 1'b0;
+      EX_MEM_mem_write <= 1'b0;
+      EX_MEM_reg_write <= 1'b0;
+      EX_MEM_is_ecall <= 1'b0;
+
+      EX_MEM_rd <= 32'b0;
+      EX_MEM_alu_out <= 32'b0;
+      EX_MEM_dmem_data <= 32'b0;
     end
     else begin
+      EX_MEM_mem_read <= ID_EX_mem_read;
+      EX_MEM_mem_to_reg <= ID_EX_mem_to_reg;
+      EX_MEM_mem_write <= ID_EX_mem_write;
+      EX_MEM_reg_write <= ID_EX_reg_write;
+      EX_MEM_is_ecall <= ID_EX_is_ecall;
+
+      EX_MEM_rd <= ID_EX_rd;
+      EX_MEM_alu_out <= alu_result;
+      EX_MEM_dmem_data <= ID_EX_rs2_data;
     end
   end
 
   // ---------- Data Memory ----------
   DataMemory dmem(
-    .reset (),      // input
-    .clk (),        // input
-    .addr (),       // input
-    .din (),        // input
-    .mem_read (),   // input
-    .mem_write (),  // input
-    .dout ()        // output
+    .reset (reset),      // input
+    .clk (clk),        // input
+    .addr (EX_MEM_alu_out),       // input
+    .din (EX_MEM_dmem_data),        // input
+    .mem_read (EX_MEM_mem_read),   // input
+    .mem_write (EX_MEM_mem_write),  // input
+    .dout (dmem_dout)        // output
   );
 
   // Update MEM/WB pipeline registers here
   always @(posedge clk) begin
     if (reset) begin
+      MEM_WB_mem_to_reg <= 1'b0;
+      MEM_WB_reg_write <= 1'b0;
+      MEM_WB_mem_to_reg_src_1 <= 32'b0;
+      MEM_WB_mem_to_reg_src_2 <= 32'b0;
     end
     else begin
+      MEM_WB_mem_to_reg <= EX_MEM_mem_to_reg;
+      MEM_WB_reg_write <= EX_MEM_reg_write;
+      MEM_WB_mem_to_reg_src_1 <= EX_MEM_alu_out;
+      MEM_WB_mem_to_reg_src_2 <= dmem_dout;
     end
   end
 
