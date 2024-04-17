@@ -25,8 +25,15 @@ module ControlUnit (
         mem_write = part_of_inst == `STORE;
         alu_src = part_of_inst != `ARITHMETIC && part_of_inst != `BRANCH;
         write_enable = part_of_inst != `STORE && part_of_inst != `BRANCH && part_of_inst != `ECALL;
-        // TODO(chseong): alu_op impl
-        alu_op=2'10;
+        if(part_of_inst == `BRANCH) begin
+            alu_op = 2'b01;
+        end
+        else if(part_of_inst == `ARITHMETIC || part_of_inst == `ARITHMETIC_IMM) begin
+            alu_op = 2'b10;
+        end
+        else begin
+            alu_op = 2'b00;
+        end
         pc_to_reg = part_of_inst == `JAL || part_of_inst == `JALR;
         is_ecall = part_of_inst == `ECALL;
     end
