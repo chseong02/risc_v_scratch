@@ -18,7 +18,6 @@ module cpu(input reset,       // positive reset signal
   wire [31:0] pc_out;
   wire [31:0] imem_dout;
 
-  wire opcode;
   wire [6:0] opcode;
   wire [4:0] rs1;
   wire [4:0] rs2;
@@ -174,7 +173,7 @@ module cpu(input reset,       // positive reset signal
 
   IsHaltedControlUnit is_halted_ctrl_unit (
     .is_ecall(is_ecall),
-    .x17_data(rs1_dout)
+    .x17_data(rs1_dout),
     .is_halted(is_halted_ctrl)
   );
 
@@ -255,7 +254,7 @@ module cpu(input reset,       // positive reset signal
       EX_MEM_reg_write <= 1'b0;
       EX_MEM_is_halted <= 1'b0;
 
-      EX_MEM_rd <= 32'b0;
+      EX_MEM_rd <= 5'b0;
       EX_MEM_alu_out <= 32'b0;
       EX_MEM_dmem_data <= 32'b0;
     end
@@ -292,6 +291,7 @@ module cpu(input reset,       // positive reset signal
 
       MEM_WB_mem_to_reg_src_1 <= 32'b0;
       MEM_WB_mem_to_reg_src_2 <= 32'b0;
+      MEM_WB_rd <= 5'b0;
     end
     else begin
       MEM_WB_mem_to_reg <= EX_MEM_mem_to_reg;
