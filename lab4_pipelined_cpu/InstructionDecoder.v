@@ -1,6 +1,6 @@
 `include "constants.v"
 
-module instruction_decoder (
+module InstructionDecoder (
     instruction,       // input
     opcode,            // output
     rs1,               // output

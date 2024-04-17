@@ -1,4 +1,4 @@
-module halt_unit(
+module HaltUnit(
     is_ecall,
     is_x17_10,
     is_halted

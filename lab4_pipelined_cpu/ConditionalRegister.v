@@ -1,6 +1,6 @@
 `include "constants.v"
 
-module conditional_register (
+module ConditionalRegister (
     reset,
     clk,
     cond,

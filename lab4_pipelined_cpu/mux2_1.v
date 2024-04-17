@@ -1,6 +1,6 @@
 `include "constants.v"
 
-module mux2_1 (
+module Mux2_1 (
     in_0, // input
     in_1, // input
     cond, // input

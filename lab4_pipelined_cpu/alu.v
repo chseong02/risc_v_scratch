@@ -1,7 +1,7 @@
 `include "constants.v"
 `include "opcodes.v"
 
-module alu (
+module Alu (
     alu_operation,  // input
     alu_in_1,       // input
     alu_in_2,       // input

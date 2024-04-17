@@ -1,4 +1,4 @@
-module single_register(
+module SingleRegister(
     reset,
     clk,
     in,

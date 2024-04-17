@@ -1,7 +1,7 @@
 `include "constants.v"
 `include "opcodes.v"
 
-module alu_control_unit (
+module AluControlUnit (
     part30_of_inst,     // input
     part14_12_of_inst,  // input
     part6_0_of_inst,    // input

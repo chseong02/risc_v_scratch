@@ -1,7 +1,7 @@
 `include "constants.v"
 `include "opcodes.v"
 
-module immediate_generator (
+module ImmediateGenerator (
     part_of_inst,       // input
     imm_gen_out         // output
 );
