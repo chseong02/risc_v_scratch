@@ -61,7 +61,7 @@ module cpu(input reset,       // positive reset signal
   reg ID_EX_mem_read;       // will be used in MEM stage
   reg ID_EX_mem_to_reg;     // will be used in WB stage
   reg ID_EX_reg_write;      // will be used in WB stage
-  reg ID_EX_is_ecall;
+  reg ID_EX_is_halted;
   // From others
   reg [31:0] ID_EX_rs1_data;
   reg [31:0] ID_EX_rs2_data;
@@ -80,7 +80,7 @@ module cpu(input reset,       // positive reset signal
   reg EX_MEM_is_branch;     // will be used in MEM stage
   reg EX_MEM_mem_to_reg;    // will be used in WB stage
   reg EX_MEM_reg_write;     // will be used in WB stage
-  reg EX_MEM_is_ecall;
+  reg EX_MEM_is_halted;
   // From others
   reg [31:0] EX_MEM_alu_out;
   reg [31:0] EX_MEM_dmem_data;
@@ -90,6 +90,7 @@ module cpu(input reset,       // positive reset signal
   // From the control unit
   reg MEM_WB_mem_to_reg;    // will be used in WB stage
   reg MEM_WB_reg_write;     // will be used in WB stage
+  reg MEM_WB_is_halted;
   // From others
   reg [31:0] MEM_WB_mem_to_reg_src_1;
   reg [31:0] MEM_WB_mem_to_reg_src_2;
@@ -182,7 +183,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_alu_src <= 1'b0;
       ID_EX_reg_write <= 1'b0;
       ID_EX_alu_op <= 1'b0;
-      ID_EX_is_ecall <= 1'b0;
+      ID_EX_is_halted <= 1'b0;
 
       ID_EX_rs1_data <= 32'b0;
       ID_EX_rs2_data <= 32'b0;
@@ -199,7 +200,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_alu_src <= alu_src;
       ID_EX_reg_write <= reg_write;
       ID_EX_alu_op <= alu_op;
-      ID_EX_is_ecall <= is_ecall;
+      ID_EX_is_halted <= is_ecall;
       
       ID_EX_rs1_data <= rs1_dout;
       ID_EX_rs2_data <= rs2_dout;
@@ -242,7 +243,7 @@ module cpu(input reset,       // positive reset signal
       EX_MEM_mem_to_reg <= 1'b0;
       EX_MEM_mem_write <= 1'b0;
       EX_MEM_reg_write <= 1'b0;
-      EX_MEM_is_ecall <= 1'b0;
+      EX_MEM_is_halted <= 1'b0;
 
       EX_MEM_rd <= 32'b0;
       EX_MEM_alu_out <= 32'b0;
@@ -253,7 +254,7 @@ module cpu(input reset,       // positive reset signal
       EX_MEM_mem_to_reg <= ID_EX_mem_to_reg;
       EX_MEM_mem_write <= ID_EX_mem_write;
       EX_MEM_reg_write <= ID_EX_reg_write;
-      EX_MEM_is_ecall <= ID_EX_is_ecall;
+      EX_MEM_is_halted <= ID_EX_is_halted;
 
       EX_MEM_rd <= ID_EX_rd;
       EX_MEM_alu_out <= alu_result;
@@ -277,6 +278,7 @@ module cpu(input reset,       // positive reset signal
     if (reset) begin
       MEM_WB_mem_to_reg <= 1'b0;
       MEM_WB_reg_write <= 1'b0;
+      MEM_WB_is_halted <= 1'b0;
 
       MEM_WB_mem_to_reg_src_1 <= 32'b0;
       MEM_WB_mem_to_reg_src_2 <= 32'b0;
@@ -284,6 +286,7 @@ module cpu(input reset,       // positive reset signal
     else begin
       MEM_WB_mem_to_reg <= EX_MEM_mem_to_reg;
       MEM_WB_reg_write <= EX_MEM_reg_write;
+      MEM_WB_is_halted <= EX_MEM_is_halted;
       
       MEM_WB_mem_to_reg_src_1 <= EX_MEM_alu_out;
       MEM_WB_mem_to_reg_src_2 <= dmem_dout;
