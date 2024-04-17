@@ -29,7 +29,14 @@ module cpu(input reset,       // positive reset signal
   wire [31:0] immediate;
   wire [31:0] rs1_dout;
   wire [31:0] rs2_dout;
-  wire 
+
+  wire mem_read;
+  wire mem_to_reg;
+  wire mem_write;
+  wire alu_src;
+  wire reg_write;
+  wire [1:0] alu_op;
+  wire is_ecall;
 
   /***** Register declarations *****/
   // You need to modify the width of registers
@@ -46,6 +53,7 @@ module cpu(input reset,       // positive reset signal
   reg ID_EX_mem_read;       // will be used in MEM stage
   reg ID_EX_mem_to_reg;     // will be used in WB stage
   reg ID_EX_reg_write;      // will be used in WB stage
+  reg ID_EX_is_ecall;
   // From others
   reg [31:0] ID_EX_rs1_data;
   reg [31:0] ID_EX_rs2_data;
@@ -55,6 +63,7 @@ module cpu(input reset,       // positive reset signal
   reg [2:0] ID_EX_funct3;
   reg [6:0] ID_EX_opcode;
   reg [4:0] ID_EX_rd;
+ 
 
   /***** EX/MEM pipeline registers *****/
   // From the control unit
@@ -139,15 +148,14 @@ module cpu(input reset,       // positive reset signal
 
   // ---------- Control Unit ----------
   ControlUnit ctrl_unit (
-    .part_of_inst(),  // input
-    .mem_read(),      // output
-    .mem_to_reg(),    // output
-    .mem_write(),     // output
-    .alu_src(),       // output
-    .write_enable(),  // output
-    .pc_to_reg(),     // output
-    .alu_op(),        // output
-    .is_ecall()       // output (ecall inst)
+    .part_of_inst(opcode),  // input
+    .mem_read(mem_read),      // output
+    .mem_to_reg(mem_to_reg),    // output
+    .mem_write(mem_write),     // output
+    .alu_src(alu_src),       // output
+    .reg_write(reg_write),  // output
+    .alu_op(alu_op),        // output
+    .is_ecall(is_ecall)       // output (ecall inst)
   );
 
   // ---------- Immediate Generator ----------
@@ -159,6 +167,14 @@ module cpu(input reset,       // positive reset signal
   // Update ID/EX pipeline registers here
   always @(posedge clk) begin
     if (reset) begin
+      ID_EX_mem_read <= 1'b0;
+      ID_EX_mem_to_reg <= 1'b0;
+      ID_EX_mem_write <= 1'b0;
+      ID_EX_alu_src <= 1'b0;
+      ID_EX_reg_write <= 1'b0;
+      ID_EX_alu_op <= 1'b0;
+      ID_EX_is_ecall <= 1'b0;
+
       ID_EX_rs1_data <= 32'b0;
       ID_EX_rs2_data <= 32'b0;
       ID_EX_imm <= 32'b0;
@@ -169,6 +185,14 @@ module cpu(input reset,       // positive reset signal
       ID_EX_rd <= 5'b0;
     end
     else begin
+      ID_EX_mem_read <= mem_read;
+      ID_EX_mem_to_reg <= mem_to_reg;
+      ID_EX_mem_write <= mem_write;
+      ID_EX_alu_src <= alu_src;
+      ID_EX_reg_write <= reg_write;
+      ID_EX_alu_op <= alu_op;
+      ID_EX_is_ecall <= is_ecall;
+      
       ID_EX_rs1_data <= rs1_dout;
       ID_EX_rs2_data <= rs2_dout;
       ID_EX_imm <= immediate;
