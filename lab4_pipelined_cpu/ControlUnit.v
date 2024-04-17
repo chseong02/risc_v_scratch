@@ -7,6 +7,7 @@ module ControlUnit (
     mem_write,     // output
     alu_src,       // output
     write_enable,  // output
+    alu_op,
     is_ecall       // output
 );
     input [6:0] part_of_inst;
@@ -15,6 +16,7 @@ module ControlUnit (
     output reg mem_write;
     output reg alu_src;
     output reg write_enable;
+    output reg [1:0] alu_op;
     output reg is_ecall;
 
     always @(*) begin
@@ -23,6 +25,8 @@ module ControlUnit (
         mem_write = part_of_inst == `STORE;
         alu_src = part_of_inst != `ARITHMETIC && part_of_inst != `BRANCH;
         write_enable = part_of_inst != `STORE && part_of_inst != `BRANCH && part_of_inst != `ECALL;
+        // TODO(chseong): alu_op impl
+        alu_op=2'10;
         pc_to_reg = part_of_inst == `JAL || part_of_inst == `JALR;
         is_ecall = part_of_inst == `ECALL;
     end
