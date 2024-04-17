@@ -38,6 +38,8 @@ module cpu(input reset,       // positive reset signal
   wire [1:0] alu_op;
   wire is_ecall;
 
+  wire is_halted_ctrl;
+
   wire [3:0] alu_operation;
   wire [31:0] alu_in_2;
   wire [31:0] alu_result;
@@ -45,6 +47,8 @@ module cpu(input reset,       // positive reset signal
   wire [31:0] dmem_dout;
 
   wire [31:0] reg_write_data;
+
+  assign is_halted = MEM_WB_is_halted;
 
   /***** Register declarations *****/
   // You need to modify the width of registers
@@ -168,6 +172,12 @@ module cpu(input reset,       // positive reset signal
     .is_ecall(is_ecall)       // output (ecall inst)
   );
 
+  IsHaltedControlUnit is_halted_ctrl_unit (
+    .is_ecall(is_ecall),
+    .x17_data(rs1_dout)
+    .is_halted(is_halted_ctrl)
+  );
+
   // ---------- Immediate Generator ----------
   ImmediateGenerator imm_gen(
     .part_of_inst(full_instruction),  // input
@@ -200,7 +210,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_alu_src <= alu_src;
       ID_EX_reg_write <= reg_write;
       ID_EX_alu_op <= alu_op;
-      ID_EX_is_halted <= is_ecall;
+      ID_EX_is_halted <= is_halted_ctrl;
       
       ID_EX_rs1_data <= rs1_dout;
       ID_EX_rs2_data <= rs2_dout;
