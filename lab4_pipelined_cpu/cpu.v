@@ -48,6 +48,7 @@ module cpu(input reset,       // positive reset signal
   wire [31:0] reg_write_data;
 
   assign is_halted = MEM_WB_is_halted;
+  assign pc_update_cond = 1'b1;
 
   /***** Register declarations *****/
   // You need to modify the width of registers
@@ -152,7 +153,7 @@ module cpu(input reset,       // positive reset signal
     .rs2 (rs2),          // input
     .rd (MEM_WB_rd),           // input
     .rd_din (reg_write_data),       // input
-    .write_enable (MEM_WB_mem_to_reg),    // input
+    .write_enable (MEM_WB_reg_write),    // input
     .rs1_dout (rs1_dout),     // output
     .rs2_dout (rs2_dout),      // output
     .print_reg(print_reg)
