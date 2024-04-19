@@ -30,6 +30,8 @@ module cpu(input reset,       // positive reset signal
   wire [31:0] rs2_dout;
 
   wire [4:0] rs1_choice;
+  wire IF_ID_write;
+  wire is_nop;
 
   wire mem_read;
   wire mem_to_reg;
@@ -50,7 +52,6 @@ module cpu(input reset,       // positive reset signal
   wire [31:0] reg_write_data;
 
   assign is_halted = MEM_WB_is_halted;
-  assign pc_update_cond = 1'b1;
 
   /***** Register declarations *****/
   // You need to modify the width of registers
@@ -130,7 +131,7 @@ module cpu(input reset,       // positive reset signal
     if (reset) begin
       IF_ID_inst <= 32'b0;
     end
-    else begin
+    else if(IF_ID_write == 1'b1) begin
       IF_ID_inst <= imem_dout;
     end
   end
@@ -168,9 +169,20 @@ module cpu(input reset,       // positive reset signal
     .print_reg(print_reg)
   );
 
+  // ---------- Hazard Detection Unit ----------
+  HazardDetectionUnit hazard_detection_unit(
+    .rs1(rs1_choice),
+    .rs2(rs2),
+    .ID_EX_mem_read(ID_EX_mem_read),
+    .ID_EX_rd(ID_EX_rd),
+    .pc_write(pc_update_cond),
+    .IF_ID_write(IF_ID_write),
+    .is_nop(is_nop),
+  );
 
   // ---------- Control Unit ----------
   ControlUnit ctrl_unit (
+    .is_nop(is_nop),
     .part_of_inst(opcode),  // input
     .mem_read(mem_read),      // output
     .mem_to_reg(mem_to_reg),    // output
