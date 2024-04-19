@@ -75,7 +75,7 @@ module cpu(input reset,       // positive reset signal
   reg ID_EX_mem_read;       // will be used in MEM stage
   reg ID_EX_mem_to_reg;     // will be used in WB stage
   reg ID_EX_reg_write;      // will be used in WB stage
-  reg ID_EX_is_halted;
+  reg ID_EX_is_ecall;
   // From others
   reg [31:0] ID_EX_rs1_data;
   reg [31:0] ID_EX_rs2_data;
@@ -200,12 +200,6 @@ module cpu(input reset,       // positive reset signal
     .is_ecall(is_ecall)       // output (ecall inst)
   );
 
-  IsHaltedControlUnit is_halted_ctrl_unit (
-    .is_ecall(is_ecall),
-    .x17_data(rs1_dout),
-    .is_halted(is_halted_ctrl)
-  );
-
   // ---------- Immediate Generator ----------
   ImmediateGenerator imm_gen(
     .part_of_inst(full_instruction),  // input
@@ -221,7 +215,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_alu_src <= 1'b0;
       ID_EX_reg_write <= 1'b0;
       ID_EX_alu_op <= 2'b00;
-      ID_EX_is_halted <= 1'b0;
+      ID_EX_is_ecall <= 1'b0;
 
       ID_EX_rs1_data <= 32'b0;
       ID_EX_rs2_data <= 32'b0;
@@ -240,7 +234,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_alu_src <= alu_src;
       ID_EX_reg_write <= reg_write;
       ID_EX_alu_op <= alu_op;
-      ID_EX_is_halted <= is_halted_ctrl;
+      ID_EX_is_ecall <= is_ecall;
       
       ID_EX_rs1_data <= rs1_dout;
       ID_EX_rs2_data <= rs2_dout;
@@ -249,7 +243,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_funct3 <= funct3;
       ID_EX_opcode <= opcode;
       ID_EX_rd <= rd;
-      ID_EX_rs_1 <= rs1;
+      ID_EX_rs_1 <= rs1_choice;
       ID_EX_rs_2 <= rs2;
     end
   end
@@ -306,6 +300,13 @@ module cpu(input reset,       // positive reset signal
     .cond(forward_B),
     .out(alu_src_mux_out)
   );
+
+  IsHaltedControlUnit is_halted_ctrl_unit (
+    .is_ecall(ID_EX_is_ecall),
+    .x17_data(alu_in_1),
+    .is_halted(is_halted_ctrl)
+  );
+
   
   // Update EX/MEM pipeline registers here
   always @(posedge clk) begin
@@ -325,7 +326,7 @@ module cpu(input reset,       // positive reset signal
       EX_MEM_mem_to_reg <= ID_EX_mem_to_reg;
       EX_MEM_mem_write <= ID_EX_mem_write;
       EX_MEM_reg_write <= ID_EX_reg_write;
-      EX_MEM_is_halted <= ID_EX_is_halted;
+      EX_MEM_is_halted <= is_halted_ctrl;
 
       EX_MEM_rd <= ID_EX_rd;
       EX_MEM_alu_out <= alu_result;
