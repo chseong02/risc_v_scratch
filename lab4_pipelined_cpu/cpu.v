@@ -265,10 +265,10 @@ module cpu(input reset,       // positive reset signal
 
   // ---------- ALU ----------
   Mux2_1 alu_src_mux(
-    .in_0(ID_EX_rs2_data),
+    .in_0(alu_src_mux_out),
     .in_1(ID_EX_imm),
     .cond(ID_EX_alu_src),
-    .out(alu_src_mux_out)
+    .out(alu_in_2)
   );
 
   ALU alu (
@@ -291,20 +291,20 @@ module cpu(input reset,       // positive reset signal
 
   Mux4_1 forward_A_mux3_1(
     .in_0(ID_EX_rs1_data),
-    .in_1(reg_write_data),
-    .in_2(EX_MEM_alu_out),
+    .in_1(EX_MEM_alu_out),
+    .in_2(reg_write_data),
     .in_3(0),
     .cond(forward_A),
     .out(alu_in_1)
   );
 
   Mux4_1 forward_B_mux3_1(
-    .in_0(alu_src_mux_out),
-    .in_1(reg_write_data),
-    .in_2(EX_MEM_alu_out),
+    .in_0(ID_EX_rs2_data),
+    .in_1(EX_MEM_alu_out),
+    .in_2(reg_write_data),
     .in_3(0),
     .cond(forward_B),
-    .out(alu_in_2)
+    .out(alu_src_mux_out)
   );
   
   // Update EX/MEM pipeline registers here
@@ -329,7 +329,7 @@ module cpu(input reset,       // positive reset signal
 
       EX_MEM_rd <= ID_EX_rd;
       EX_MEM_alu_out <= alu_result;
-      EX_MEM_dmem_data <= ID_EX_rs2_data;
+      EX_MEM_dmem_data <= alu_src_mux_out;
     end
   end
 
