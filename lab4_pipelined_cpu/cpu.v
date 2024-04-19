@@ -29,6 +29,8 @@ module cpu(input reset,       // positive reset signal
   wire [31:0] rs1_dout;
   wire [31:0] rs2_dout;
 
+  wire [4:0] rs1_choice;
+
   wire mem_read;
   wire mem_to_reg;
   wire mem_write;
@@ -146,10 +148,17 @@ module cpu(input reset,       // positive reset signal
   );
 
   // ---------- Register File ----------
+  Mux2_1 #(.data_width(5)) is_ecall_mux (
+    .in_0(rs1),
+    .in_1(5'd17),
+    .cond(is_ecall),
+    .out(rs1_choice)
+  );
+
   RegisterFile reg_file (
     .reset (reset),        // input
     .clk (clk),          // input
-    .rs1 (rs1),          // input
+    .rs1 (rs1_choice),          // input
     .rs2 (rs2),          // input
     .rd (MEM_WB_rd),           // input
     .rd_din (reg_write_data),       // input
