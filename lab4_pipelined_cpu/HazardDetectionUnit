@@ -20,9 +20,14 @@ module HazardDetectionUnit (
     
     always @(*) begin
         if(ID_EX_mem_read && (rs1 == ID_EX_rd || rs2 == ID_EX_rd)) begin
-            pc_write = 1'd1;
-            IF_ID_write = 1'd1;
-            is_nop = 1'd1;
+            pc_write = 1'b0;
+            IF_ID_write = 1'b0;
+            is_nop = 1'b1;
+        end
+        else begin
+            pc_write = 1'b1;
+            IF_ID_write = 1'b1;
+            is_nop = 1'b0;
         end
     end
 
