@@ -1,8 +1,10 @@
 module ForwardingUnit(
-    rs_1,
-    rs_2,
-    WB_EX_MEM,
-    WB_MEM_WB
+    rs_1_EX,
+    rs_2_EX,
+    rd_MEM,
+    rd_WB,
+    RegWrite_MEM,
+    RegWrite_WB,
     forward_A,
     forward_B
     );
@@ -23,9 +25,9 @@ module ForwardingUnit(
         else
             forward_A = 0;
 
-        if(rs_2_EX != 0 && rs_2_EX == WB_EX_MEM && RegWrite_MEM)
+        if(rs_2_EX != 0 && rs_2_EX == rd_MEM && RegWrite_MEM)
             forward_B = 2'b01;  //forward operand from MEM stage
-        else if(rs_2_EX != 0 && rs_2_EX == WB_MEM_WB && RegWrite_WB)
+        else if(rs_2_EX != 0 && rs_2_EX == rd_WB && RegWrite_WB)
             forward_B = 2'b10;  //forward operand from WB stage
         else
             forward_B = 2'b00;
