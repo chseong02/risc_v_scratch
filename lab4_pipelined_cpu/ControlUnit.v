@@ -22,7 +22,7 @@ module ControlUnit (
     output reg is_ecall;
 
     always @(*) begin
-        if() begin
+        if(is_nop == 1'b1) begin
             mem_read = 1'b0;
             mem_to_reg = 1'b0;
             mem_write = 1'b0;
