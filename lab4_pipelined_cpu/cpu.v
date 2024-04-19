@@ -57,9 +57,6 @@ module cpu(input reset,       // positive reset signal
 
   wire [31:0] reg_write_data;
 
-  assign is_halted = MEM_WB_is_halted;
-
-
   /***** Register declarations *****/
   // You need to modify the width of registers
   // In addition, 
@@ -373,6 +370,12 @@ module cpu(input reset,       // positive reset signal
     .in_1(MEM_WB_mem_to_reg_src_2),
     .cond(MEM_WB_mem_to_reg),
     .out(reg_write_data)
+  );
+
+  HaltUnit halt_unit(
+    .clk(clk),
+    .is_halted_ctrl(MEM_WB_is_halted),
+    .is_halted(is_halted)
   );
   
 endmodule
