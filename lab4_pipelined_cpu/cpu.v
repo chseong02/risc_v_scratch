@@ -44,14 +44,21 @@ module cpu(input reset,       // positive reset signal
   wire is_halted_ctrl;
 
   wire [3:0] alu_operation;
+  wire [31:0] alu_in_1;
   wire [31:0] alu_in_2;
   wire [31:0] alu_result;
+
+  wire [31:0] alu_src_mux_out;
+
+  wire [1:0] forward_A;
+  wire [1:0] forward_B;
 
   wire [31:0] dmem_dout;
 
   wire [31:0] reg_write_data;
 
   assign is_halted = MEM_WB_is_halted;
+
 
   /***** Register declarations *****/
   // You need to modify the width of registers
@@ -78,7 +85,8 @@ module cpu(input reset,       // positive reset signal
   reg [2:0] ID_EX_funct3;
   reg [6:0] ID_EX_opcode;
   reg [4:0] ID_EX_rd;
- 
+  reg [4:0] ID_EX_rs_1;
+  reg [4:0] ID_EX_rs_2;
 
   /***** EX/MEM pipeline registers *****/
   // From the control unit
@@ -222,6 +230,8 @@ module cpu(input reset,       // positive reset signal
       ID_EX_funct3 <= 3'b0;
       ID_EX_opcode <= 7'b0;
       ID_EX_rd <= 5'b0;
+      ID_EX_rs_1 <= 5'b0;
+      ID_EX_rs_2 <= 5'b0;
     end
     else begin
       ID_EX_mem_read <= mem_read;
@@ -239,6 +249,8 @@ module cpu(input reset,       // positive reset signal
       ID_EX_funct3 <= funct3;
       ID_EX_opcode <= opcode;
       ID_EX_rd <= rd;
+      ID_EX_rs_1 <= rs1;
+      ID_EX_rs_2 <= rs2;
     end
   end
 
@@ -256,16 +268,45 @@ module cpu(input reset,       // positive reset signal
     .in_0(ID_EX_rs2_data),
     .in_1(ID_EX_imm),
     .cond(ID_EX_alu_src),
-    .out(alu_in_2)
+    .out(alu_src_mux_out)
   );
 
   ALU alu (
     .alu_operation(alu_operation),      // input
-    .alu_in_1(ID_EX_rs1_data),    // input  
+    .alu_in_1(alu_in_1),    // input  
     .alu_in_2(alu_in_2),    // input
     .alu_result(alu_result)  // output
   );
 
+  ForwardingUnit forwarding_unit(
+    .rs_1_EX(ID_EX_rs_1),
+    .rs_2_EX(ID_EX_rs_2),
+    .rd_MEM(EX_MEM_rd),
+    .rd_WB(MEM_WB_rd),
+    .RegWrite_MEM(EX_MEM_reg_write),
+    .RegWrite_WB(MEM_WB_reg_write),
+    .forward_A(forward_A),
+    .forward_B(forward_B)
+  );
+
+  Mux4_1 forward_A_mux3_1(
+    .in_0(ID_EX_rs1_data),
+    .in_1(reg_write_data),
+    .in_2(EX_MEM_alu_out),
+    .in_3(0),
+    .cond(forward_A),
+    .out(alu_in_1)
+  );
+
+  Mux4_1 forward_B_mux3_1(
+    .in_0(alu_src_mux_out),
+    .in_1(reg_write_data),
+    .in_2(EX_MEM_alu_out),
+    .in_3(0),
+    .cond(forward_B),
+    .out(alu_in_2)
+  );
+  
   // Update EX/MEM pipeline registers here
   always @(posedge clk) begin
     if (reset) begin
