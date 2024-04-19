@@ -222,8 +222,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_reg_write <= 1'b0;
       ID_EX_alu_op <= 2'b00;
       ID_EX_is_halted <= 1'b0;
-    end
-    if(reset) begin
+
       ID_EX_rs1_data <= 32'b0;
       ID_EX_rs2_data <= 32'b0;
       ID_EX_imm <= 32'b0;
