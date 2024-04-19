@@ -177,12 +177,11 @@ module cpu(input reset,       // positive reset signal
     .ID_EX_rd(ID_EX_rd),
     .pc_write(pc_update_cond),
     .IF_ID_write(IF_ID_write),
-    .is_nop(is_nop),
+    .is_nop(is_nop)
   );
 
   // ---------- Control Unit ----------
   ControlUnit ctrl_unit (
-    .is_nop(is_nop),
     .part_of_inst(opcode),  // input
     .mem_read(mem_read),      // output
     .mem_to_reg(mem_to_reg),    // output
@@ -207,7 +206,7 @@ module cpu(input reset,       // positive reset signal
 
   // Update ID/EX pipeline registers here
   always @(posedge clk) begin
-    if (reset) begin
+    if (reset && is_nop) begin
       ID_EX_mem_read <= 1'b0;
       ID_EX_mem_to_reg <= 1'b0;
       ID_EX_mem_write <= 1'b0;
