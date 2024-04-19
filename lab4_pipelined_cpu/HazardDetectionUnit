@@ -8,15 +8,15 @@ module HazardDetectionUnit (
     ID_EX_rd,           // input
     pc_write,           // output
     IF_ID_write,        // output
-    is_nop,             // output
+    is_nop              // output
 );
     input [4 : 0] rs1;
     input [4 : 0] rs2;
     input ID_EX_mem_read;
     input [4:0] ID_EX_rd;
-    output pc_write;
-    output IF_ID_write;
-    output is_nop;
+    output reg pc_write;
+    output reg IF_ID_write;
+    output reg is_nop;
     
     always @(*) begin
         if(ID_EX_mem_read && (rs1 == ID_EX_rd || rs2 == ID_EX_rd)) begin
