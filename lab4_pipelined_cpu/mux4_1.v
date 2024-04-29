@@ -4,7 +4,7 @@ module Mux4_1 (
     in_0, // input
     in_1, // input
     in_2, // input
-    in_3,
+    in_3, // input
     cond, // input
     out   // output
 );
