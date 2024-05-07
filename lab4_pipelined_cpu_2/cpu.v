@@ -262,7 +262,7 @@ module cpu(input reset,       // positive reset signal
     .out(alu_in_2)
   );
 
-  ALU alu (
+  alu alu (
     .alu_operation(alu_operation),      // input
     .alu_in_1(alu_in_1),    // input  
     .alu_in_2(alu_in_2),    // input
