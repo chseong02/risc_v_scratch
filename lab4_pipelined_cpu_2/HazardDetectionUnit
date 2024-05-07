@@ -1,0 +1,34 @@
+`include "constants.v"
+`include "opcodes.v"
+
+module HazardDetectionUnit (
+    rs1,                // input
+    rs2,                // input
+    ID_EX_mem_read,     // input
+    ID_EX_rd,           // input
+    pc_write,           // output
+    IF_ID_write,        // output
+    is_nop              // output
+);
+    input [4 : 0] rs1;
+    input [4 : 0] rs2;
+    input ID_EX_mem_read;
+    input [4:0] ID_EX_rd;
+    output reg pc_write;
+    output reg IF_ID_write;
+    output reg is_nop;
+    
+    always @(*) begin
+        if(ID_EX_mem_read && (rs1 == ID_EX_rd || rs2 == ID_EX_rd)) begin
+            pc_write = 1'b0;
+            IF_ID_write = 1'b0;
+            is_nop = 1'b1;
+        end
+        else begin
+            pc_write = 1'b1;
+            IF_ID_write = 1'b1;
+            is_nop = 1'b0;
+        end
+    end
+
+endmodule
