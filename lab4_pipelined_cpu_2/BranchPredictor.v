@@ -12,18 +12,18 @@ module BranchPredictor (
     output reg is_flush
 );
 
-    reg [23:0] tag_table [0:63];
-    reg valid_bit_table [0:63];
-    reg [1:0] branch_history_table [0:63]; 
-    reg [31:0] branch_target_buffer [0:63];
+    reg [24:0] tag_table [0:31];
+    reg valid_bit_table [0:31];
+    reg [1:0] branch_history_table [0:31]; 
+    reg [31:0] branch_target_buffer [0:31];
     integer i;
 
     reg [31:0] write_real_pc;
-    reg [5:0] read_btb_index;
-    reg [5:0] write_btb_index;
+    reg [4:0] read_btb_index;
+    reg [4:0] write_btb_index;
     always @(*) begin
-        read_btb_index = read_addr[7:2];
-        write_btb_index = write_addr[7:2];
+        read_btb_index = read_addr[6:2];
+        write_btb_index = write_addr[6:2];
 
         write_real_pc = write_addr_taken ? write_calculated_taken_pc : (write_addr + 4);
         is_flush = 0;
@@ -37,7 +37,7 @@ module BranchPredictor (
         else begin
             next_pc = read_addr + 4;
             if(valid_bit_table[read_btb_index]) begin
-                if(tag_table[read_btb_index] == read_addr[31:8])begin
+                if(tag_table[read_btb_index] == read_addr[31:7])begin
                     if(branch_history_table[read_btb_index]>=2'b10)begin
                         next_pc = branch_target_buffer[read_btb_index];
                     end
@@ -49,7 +49,7 @@ module BranchPredictor (
 
     always @(posedge clk) begin
         if(reset) begin
-            for(i = 0 ; i<63; i = i+1)
+            for(i = 0 ; i<31; i = i+1)
                 tag_table[i] <= 0;
                 valid_bit_table[i] <=0;
                 branch_history_table[i]<=0;
@@ -57,7 +57,7 @@ module BranchPredictor (
         end
         else begin
             if(write_is_jump_or_branch) begin
-                tag_table [write_btb_index] <= write_addr[31:8];
+                tag_table [write_btb_index] <= write_addr[31:7];
                 valid_bit_table[write_btb_index] <= 1;
                 case(branch_history_table[write_btb_index])
                     2'b11: begin
