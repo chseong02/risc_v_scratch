@@ -16,6 +16,8 @@ module cpu(input reset,       // positive reset signal
   wire pc_update_cond;
   wire [31:0] pc_in;
   wire [31:0] pc_out;
+  wire [31:0] pc_add_4;
+  wire is_flush;
   wire [31:0] imem_dout;
 
   wire [6:0] opcode;
@@ -40,12 +42,28 @@ module cpu(input reset,       // positive reset signal
   wire reg_write;
   wire [1:0] alu_op;
   wire is_ecall;
+  wire is_jal;
+  wire is_jalr;
+  wire branch;
+  wire pc_to_reg;
 
   wire is_halted_ctrl;
 
   wire [3:0] alu_operation;
+  wire [31:0] forwarded_alu_in_1;
+  wire [31:0] forwarded_or_imm_alu_in_2;
+
   wire [31:0] alu_in_1;
   wire [31:0] alu_in_2;
+
+  wire [31:0] pc_adder_in_1;
+  wire branch_taken;
+  wire branch_is_jal;
+  wire use_changed_pc;
+
+  wire [31:0] calculated_pc;
+  wire alu_bcond;
+  wire pc_src;
   wire [31:0] alu_result;
 
   wire [31:0] alu_src_mux_out;
@@ -64,6 +82,7 @@ module cpu(input reset,       // positive reset signal
   // 2. You might not need registers described below
   /***** IF/ID pipeline registers *****/
   reg [31:0] IF_ID_inst;           // will be used in ID stage
+  reg [31:0] IF_ID_pc;
   /***** ID/EX pipeline registers *****/
   // From the control unit
   reg [1:0] ID_EX_alu_op;         // will be used in EX stage
@@ -73,7 +92,13 @@ module cpu(input reset,       // positive reset signal
   reg ID_EX_mem_to_reg;     // will be used in WB stage
   reg ID_EX_reg_write;      // will be used in WB stage
   reg ID_EX_is_ecall;
+  reg ID_EX_is_jal;
+  reg ID_EX_is_jalr;
+  reg ID_EX_branch;
+  reg ID_EX_pc_to_reg;
+
   // From others
+  reg [31:0] ID_EX_pc;
   reg [31:0] ID_EX_rs1_data;
   reg [31:0] ID_EX_rs2_data;
   reg [31:0] ID_EX_imm;
@@ -120,7 +145,15 @@ module cpu(input reset,       // positive reset signal
   Adder pc_adder(
     .in_1(pc_out),  // input
     .in_2(32'd4),   // input
-    .out(pc_in)     // output
+    .out(pc_add_4)     // output
+  );
+
+  PcFlushControlUnit pc_flush_control_unit(
+    .calculated_pc(calculated_pc),
+    .use_changed_pc(use_changed_pc),
+    .not_taken_next_pc(pc_add_4),
+    .is_flush(is_flush),
+    .next_pc(pc_in)
   );
   
   // ---------- Instruction Memory ----------
@@ -133,11 +166,13 @@ module cpu(input reset,       // positive reset signal
 
   // Update IF/ID pipeline registers here
   always @(posedge clk) begin
-    if (reset) begin
+    if (reset||is_flush) begin
       IF_ID_inst <= 32'b0;
+      IF_ID_pc <= 32'b0;
     end
     else if(IF_ID_write == 1'b1) begin
       IF_ID_inst <= imem_dout;
+      IF_ID_pc <= pc_out;
     end
   end
 
@@ -188,13 +223,17 @@ module cpu(input reset,       // positive reset signal
   // ---------- Control Unit ----------
   ControlUnit ctrl_unit (
     .part_of_inst(opcode),  // input
+    .is_jal(is_jal),
+    .is_jalr(is_jalr),
+    .branch(branch),
     .mem_read(mem_read),      // output
     .mem_to_reg(mem_to_reg),    // output
     .mem_write(mem_write),     // output
     .alu_src(alu_src),       // output
     .reg_write(reg_write),  // output
     .alu_op(alu_op),        // output
-    .is_ecall(is_ecall)       // output (ecall inst)
+    .is_ecall(is_ecall),       // output (ecall inst)
+    .pc_to_reg(pc_to_reg)
   );
 
   // ---------- Immediate Generator ----------
@@ -205,7 +244,7 @@ module cpu(input reset,       // positive reset signal
 
   // Update ID/EX pipeline registers here
   always @(posedge clk) begin
-    if (reset || is_nop) begin
+    if (reset || is_nop || is_flush) begin
       ID_EX_mem_read <= 1'b0;
       ID_EX_mem_to_reg <= 1'b0;
       ID_EX_mem_write <= 1'b0;
@@ -213,6 +252,10 @@ module cpu(input reset,       // positive reset signal
       ID_EX_reg_write <= 1'b0;
       ID_EX_alu_op <= 2'b00;
       ID_EX_is_ecall <= 1'b0;
+      ID_EX_is_jal <= 1'b0;
+      ID_EX_is_jalr <= 1'b0;
+      ID_EX_branch <= 1'b0;
+      ID_EX_pc_to_reg <= 1'b0;
 
       ID_EX_rs1_data <= 32'b0;
       ID_EX_rs2_data <= 32'b0;
@@ -223,6 +266,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_rd <= 5'b0;
       ID_EX_rs_1 <= 5'b0;
       ID_EX_rs_2 <= 5'b0;
+      ID_EX_pc <= 32'b0;
     end
     else begin
       ID_EX_mem_read <= mem_read;
@@ -232,6 +276,10 @@ module cpu(input reset,       // positive reset signal
       ID_EX_reg_write <= reg_write;
       ID_EX_alu_op <= alu_op;
       ID_EX_is_ecall <= is_ecall;
+      ID_EX_is_jal <= is_jal;
+      ID_EX_is_jalr <= is_jalr;
+      ID_EX_branch <= branch;
+      ID_EX_pc_to_reg <= pc_to_reg;
       
       ID_EX_rs1_data <= rs1_dout;
       ID_EX_rs2_data <= rs2_dout;
@@ -242,6 +290,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_rd <= rd;
       ID_EX_rs_1 <= rs1_choice;
       ID_EX_rs_2 <= rs2;
+      ID_EX_pc <= IF_ID_pc;
     end
   end
 
@@ -259,6 +308,13 @@ module cpu(input reset,       // positive reset signal
     .in_0(alu_src_mux_out),
     .in_1(ID_EX_imm),
     .cond(ID_EX_alu_src),
+    .out(forwarded_or_imm_alu_in_2)
+  );
+
+  Mux2_1 alu_in_2_pc_to_reg_mux(
+    .in_0(forwarded_or_imm_alu_in_2),
+    .in_1(32'd4),
+    .cond(ID_EX_pc_to_reg),
     .out(alu_in_2)
   );
 
@@ -266,6 +322,7 @@ module cpu(input reset,       // positive reset signal
     .alu_operation(alu_operation),      // input
     .alu_in_1(alu_in_1),    // input  
     .alu_in_2(alu_in_2),    // input
+    .alu_bcond(alu_bcond),
     .alu_result(alu_result)  // output
   );
 
@@ -286,6 +343,13 @@ module cpu(input reset,       // positive reset signal
     .in_2(reg_write_data),
     .in_3(0),
     .cond(forward_A),
+    .out(forwarded_alu_in_1)
+  );
+
+  Mux2_1 alu_in_1_pc_to_reg_mux(
+    .in_0(forwarded_alu_in_1),
+    .in_1(ID_EX_pc),
+    .cond(ID_EX_pc_to_reg),
     .out(alu_in_1)
   );
 
@@ -302,6 +366,38 @@ module cpu(input reset,       // positive reset signal
     .is_ecall(ID_EX_is_ecall),
     .x17_data(alu_in_1),
     .is_halted(is_halted_ctrl)
+  );
+
+  // pc related
+  Mux2_1 pc_or_reg_mux(
+    .in_0(ID_EX_pc),
+    .in_1(forwarded_alu_in_1),
+    .cond(ID_EX_is_jalr),
+    .out(pc_adder_in_1)
+  );
+
+  Adder pc_immediate_adder(
+    .in_1(pc_adder_in_1),
+    .in_2(ID_EX_imm),
+    .out(calculated_pc)
+  );
+
+  AndModule branch_taken_and(
+    .in_1(ID_EX_branch),
+    .in_2(alu_bcond),
+    .out(branch_taken)
+  );
+
+  OrModule branch_is_jal_or(
+    .in_1(branch_taken),
+    .in_2(ID_EX_is_jal),
+    .out(branch_is_jal)
+  );
+
+  OrModule branch_is_jalr_or(
+    .in_1(branch_is_jal),
+    .in_2(ID_EX_is_jalr),
+    .out(use_changed_pc)
   );
 
   
