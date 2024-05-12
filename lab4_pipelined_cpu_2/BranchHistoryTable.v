@@ -5,6 +5,7 @@ module BranchHistoryTable (
     input current_is_jump_or_branch,
     input [31:0]old_PC, // ex ori pc
     input [31:0]cal_PC, // ex cal pc
+    input branch_taken,
     input [31:0]current_PC, // pc
     input [1:0] update_counter,
     output reg [31:0] predict_PC,
@@ -27,7 +28,11 @@ module BranchHistoryTable (
         counter = BTB[old_PC[6:2]][59:58];
 
         if(old_is_jump_or_branch) begin
-            is_flush = cal_PC == BTB[old_PC[6:2]][31:0];
+            is_flush = (branch_taken ? cal_PC:(old_PC+4))!=(counter>=2?(BTB[old_PC[6:2]][31:0]):(old_PC+4));
+            //is_flush = cal_PC != BTB[old_PC[6:2]][31:0];
+            if(is_flush) begin
+                predict_PC = branch_taken?cal_PC:(old_PC+4);
+            end
         end
     end
 

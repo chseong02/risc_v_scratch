@@ -166,6 +166,7 @@ module cpu(input reset,       // positive reset signal
     .reset(reset),
     .clk(clk),
     .old_is_jump_or_branch(ID_EX_is_jal || ID_EX_is_jalr || ID_EX_branch),
+    .branch_taken(use_changed_pc),
     .current_is_jump_or_branch(current_is_jump_or_branch),
     .old_PC(ID_EX_pc),
     .cal_PC(calculated_pc),
