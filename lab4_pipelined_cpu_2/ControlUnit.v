@@ -5,6 +5,7 @@ module ControlUnit (
     is_jal,        // output
     is_jalr,       // output
     branch,        // output
+    is_jump_or_branch,
     mem_read,      // output
     mem_to_reg,    // output
     mem_write,     // output
@@ -18,6 +19,7 @@ module ControlUnit (
     output reg is_jal;
     output reg is_jalr;
     output reg branch;
+    output reg is_jump_or_branch;
     output reg mem_read;
     output reg mem_to_reg;
     output reg mem_write;
@@ -31,6 +33,7 @@ module ControlUnit (
         is_jal = part_of_inst == `JAL;
         is_jalr = part_of_inst == `JALR;
         branch = part_of_inst == `BRANCH;
+        is_jump_or_branch = is_jal || is_jalr || branch;
         mem_read = part_of_inst == `LOAD;
         mem_to_reg = part_of_inst == `LOAD;
         mem_write = part_of_inst == `STORE;

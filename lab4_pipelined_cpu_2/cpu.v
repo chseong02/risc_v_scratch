@@ -45,6 +45,7 @@ module cpu(input reset,       // positive reset signal
   wire is_jal;
   wire is_jalr;
   wire branch;
+  wire is_jump_or_branch;
   wire pc_to_reg;
 
   wire is_halted_ctrl;
@@ -83,6 +84,8 @@ module cpu(input reset,       // positive reset signal
   /***** IF/ID pipeline registers *****/
   reg [31:0] IF_ID_inst;           // will be used in ID stage
   reg [31:0] IF_ID_pc;
+  reg [31:0] IF_ID_predict_pc;
+  reg IF_ID_is_valid;
   /***** ID/EX pipeline registers *****/
   // From the control unit
   reg [1:0] ID_EX_alu_op;         // will be used in EX stage
@@ -109,6 +112,8 @@ module cpu(input reset,       // positive reset signal
   reg [4:0] ID_EX_rd;
   reg [4:0] ID_EX_rs_1;
   reg [4:0] ID_EX_rs_2;
+  reg [31:0] ID_EX_predict_pc;
+  reg ID_EX_is_valid;
 
   /***** EX/MEM pipeline registers *****/
   // From the control unit
@@ -141,19 +146,19 @@ module cpu(input reset,       // positive reset signal
     .cond(pc_update_cond), // input
     .out(pc_out)           // output
   );
-
-  Adder pc_adder(
-    .in_1(pc_out),  // input
-    .in_2(32'd4),   // input
-    .out(pc_add_4)     // output
-  );
-
-  PcFlushControlUnit pc_flush_control_unit(
-    .calculated_pc(calculated_pc),
-    .use_changed_pc(use_changed_pc),
-    .not_taken_next_pc(pc_add_4),
-    .is_flush(is_flush),
-    .next_pc(pc_in)
+  
+  BranchPredictor branch_predictor(
+    .reset(reset),
+    .clk(clk),
+    .read_addr(pc_out),
+    .write_addr(ID_EX_pc),
+    .write_is_valid(ID_EX_is_valid),
+    .write_predict_pc(ID_EX_predict_pc),
+    .write_calculated_taken_pc(calculated_pc),
+    .write_addr_taken(use_changed_pc),
+    .write_is_jump_or_branch(is_jump_or_branch),
+    .next_pc(pc_in),
+    .is_flush(is_flush)
   );
   
   // ---------- Instruction Memory ----------
@@ -169,10 +174,14 @@ module cpu(input reset,       // positive reset signal
     if (reset||is_flush) begin
       IF_ID_inst <= 32'b0;
       IF_ID_pc <= 32'b0;
+      IF_ID_predict_pc <= 32'b0;
+      IF_ID_is_valid <= 1'b0;
     end
     else if(IF_ID_write == 1'b1) begin
       IF_ID_inst <= imem_dout;
       IF_ID_pc <= pc_out;
+      IF_ID_predict_pc <= pc_in;
+      IF_ID_is_valid <= 1'b1;
     end
   end
 
@@ -226,6 +235,7 @@ module cpu(input reset,       // positive reset signal
     .is_jal(is_jal),
     .is_jalr(is_jalr),
     .branch(branch),
+    .is_jump_or_branch(is_jump_or_branch),
     .mem_read(mem_read),      // output
     .mem_to_reg(mem_to_reg),    // output
     .mem_write(mem_write),     // output
@@ -267,6 +277,8 @@ module cpu(input reset,       // positive reset signal
       ID_EX_rs_1 <= 5'b0;
       ID_EX_rs_2 <= 5'b0;
       ID_EX_pc <= 32'b0;
+      ID_EX_predict_pc <= 32'b0;
+      ID_EX_is_valid <= 1'b0;
     end
     else begin
       ID_EX_mem_read <= mem_read;
@@ -291,6 +303,8 @@ module cpu(input reset,       // positive reset signal
       ID_EX_rs_1 <= rs1_choice;
       ID_EX_rs_2 <= rs2;
       ID_EX_pc <= IF_ID_pc;
+      ID_EX_predict_pc <= IF_ID_predict_pc;
+      ID_EX_is_valid <= IF_ID_is_valid;
     end
   end
 
