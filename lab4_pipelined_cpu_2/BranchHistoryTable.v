@@ -46,6 +46,7 @@ module BranchHistoryTable (
             if(old_is_jump_or_branch)begin
                 BTB[old_PC[6:2]][59:58] <= update_counter;
                 BTB[old_PC[6:2]][31:0] <= cal_PC;
+                BTB[old_PC[6:2]][57] <= 1;
             end
         end
     end
