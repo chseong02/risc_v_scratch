@@ -5,7 +5,7 @@ module BranchPredictionCounter (
     output reg [2:0] output_counter
 );
 
-    always @(posedge clk) begin
+    always @(*) begin
         if(is_jump_branch){
             case(input_counter)
                 2'b11: begin
