@@ -20,6 +20,10 @@ module cpu(input reset,       // positive reset signal
   wire is_flush;
   wire [31:0] imem_dout;
 
+  wire [1:0] current_counter;
+  wire [1:0] next_counter;
+  wire current_is_jump_or_branch;
+
   wire [6:0] opcode;
   wire [4:0] rs1;
   wire [4:0] rs2;
@@ -141,7 +145,7 @@ module cpu(input reset,       // positive reset signal
     .cond(pc_update_cond), // input
     .out(pc_out)           // output
   );
-
+/*
   Adder pc_adder(
     .in_1(pc_out),  // input
     .in_2(32'd4),   // input
@@ -155,7 +159,34 @@ module cpu(input reset,       // positive reset signal
     .is_flush(is_flush),
     .next_pc(pc_in)
   );
-  
+*/
+
+  // ---------- Branch History Table ----------
+  BranchHistoryTable branch_history_table(
+    .reset(reset),
+    .clk(clk),
+    .old_is_jump_or_branch(ID_EX_is_jal || ID_EX_is_jalr || ID_EX_branch),
+    .current_is_jump_or_branch(current_is_jump_or_branch),
+    .old_PC(ID_EX_pc),
+    .cal_PC(calculated_pc),
+    .current_PC(pc_out),
+    .update_counter(next_counter),
+    .predict_PC(pc_in),
+    .counter(current_counter),
+    .is_flush(is_flush)
+  );
+
+  BranchPredictionCounter branch_predict_counter(
+    .branch_taken(use_changed_pc),
+    .input_counter(current_counter),
+    .is_jump_or_branch(ID_EX_is_jal || ID_EX_is_jalr || ID_EX_branch),
+    .output_counter(next_counter)
+  );
+
+  JumpBranchCheckUnit jump_branch_check_unit(
+    .part_of_inst(imem_dout[6:0]),
+    .is_jump_or_branch(current_is_jump_or_branch)
+  );
   // ---------- Instruction Memory ----------
   InstMemory imem(
     .reset(reset),   // input
