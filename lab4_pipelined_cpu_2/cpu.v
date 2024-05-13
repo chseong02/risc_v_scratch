@@ -20,6 +20,13 @@ module cpu(input reset,       // positive reset signal
   wire is_flush;
   wire [31:0] imem_dout;
 
+  wire [4:0] bhsr_state_out;
+  wire [4:0] pht_idx;
+  wire pht_is_taken;
+  wire btb_is_valid;
+  wire [24:0] btb_tag;
+  wire [31:0] btb_target_pc;
+
   wire [6:0] opcode;
   wire [4:0] rs1;
   wire [4:0] rs2;
@@ -86,6 +93,8 @@ module cpu(input reset,       // positive reset signal
   reg [31:0] IF_ID_pc;
   reg [31:0] IF_ID_predict_pc;
   reg IF_ID_is_valid;
+  reg [4:0] IF_ID_pht_idx;
+
   /***** ID/EX pipeline registers *****/
   // From the control unit
   reg [1:0] ID_EX_alu_op;         // will be used in EX stage
@@ -99,6 +108,7 @@ module cpu(input reset,       // positive reset signal
   reg ID_EX_is_jalr;
   reg ID_EX_branch;
   reg ID_EX_pc_to_reg;
+  reg ID_EX_is_jump_or_branch;
 
   // From others
   reg [31:0] ID_EX_pc;
@@ -114,6 +124,7 @@ module cpu(input reset,       // positive reset signal
   reg [4:0] ID_EX_rs_2;
   reg [31:0] ID_EX_predict_pc;
   reg ID_EX_is_valid;
+  reg [4:0] ID_EX_pht_idx;
 
   /***** EX/MEM pipeline registers *****/
   // From the control unit
@@ -147,16 +158,57 @@ module cpu(input reset,       // positive reset signal
     .out(pc_out)           // output
   );
   
-  BranchPredictor branch_predictor(
+  // ---------- Branch Prediction ----------
+  BranchHistoryShiftRegister branch_history_shift_register(
     .reset(reset),
     .clk(clk),
-    .read_addr(pc_out),
-    .write_addr(ID_EX_pc),
-    .write_is_valid(ID_EX_is_valid),
-    .write_predict_pc(ID_EX_predict_pc),
-    .write_calculated_taken_pc(calculated_pc),
-    .write_addr_taken(use_changed_pc),
-    .write_is_jump_or_branch(is_jump_or_branch),
+    .is_taken(use_changed_pc),
+    .is_jump_or_branch(ID_EX_is_jump_or_branch),
+    .state_out(bhsr_state_out)
+  );
+
+  XorModule #(.data_width(5)) pht_xor(
+    .in_0(pc_out[6:2]),
+    .in_1(bhsr_state_out),
+    .out(pht_idx)
+  );
+
+  PatternHistoryTable pattern_history_table(
+    .reset(reset),
+    .clk(clk),
+    .predict_index(pht_idx),
+    .real_index(ID_EX_pht_idx),
+    .real_is_jump_or_branch(ID_EX_is_jump_or_branch),
+    .real_is_taken(use_changed_pc),
+    .predict_is_taken(pht_is_taken)
+  );
+
+  BranchTargetBuffer branch_target_buffer(
+    .reset(reset),
+    .clk(clk),
+    .read_index(pc_out[6:2]),
+    .update_index(ID_EX_pc[6:2]),
+    .update_tag(ID_EX_pc[31:7]),
+    .update_target_pc(calculated_pc),
+    .update_is_valid(ID_EX_is_valid),
+    .update_is_jump_or_branch(ID_EX_is_jump_or_branch),
+    .is_valid(btb_is_valid),
+    .tag(btb_tag),
+    .target_pc(btb_target_pc)
+  );
+
+  NextPcSelecter next_pc_selecter(
+    .tag(pc_out[31:7]),
+    .btb_tag(btb_tag),
+    .btb_is_valid(btb_is_valid),
+    .predict_is_taken(pht_is_taken),
+    .btb_target_pc(btb_target_pc),
+    .now_pc(pc_out),
+    .ex_predict_pc(ID_EX_predict_pc),
+    .ex_inst_pc(ID_EX_pc),
+    .ex_taken_pc(calculated_pc),
+    .ex_is_valid(ID_EX_is_valid),
+    .ex_is_taken(use_changed_pc),
     .next_pc(pc_in),
     .is_flush(is_flush)
   );
@@ -176,12 +228,14 @@ module cpu(input reset,       // positive reset signal
       IF_ID_pc <= 32'b0;
       IF_ID_predict_pc <= 32'b0;
       IF_ID_is_valid <= 1'b0;
+      IF_ID_pht_idx <= 5'b0;
     end
     else if(IF_ID_write == 1'b1) begin
       IF_ID_inst <= imem_dout;
       IF_ID_pc <= pc_out;
       IF_ID_predict_pc <= pc_in;
       IF_ID_is_valid <= 1'b1;
+      IF_ID_pht_idx <= pht_idx;
     end
   end
 
@@ -266,6 +320,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_is_jalr <= 1'b0;
       ID_EX_branch <= 1'b0;
       ID_EX_pc_to_reg <= 1'b0;
+      ID_EX_is_jump_or_branch <= 1'b0;
 
       ID_EX_rs1_data <= 32'b0;
       ID_EX_rs2_data <= 32'b0;
@@ -279,6 +334,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_pc <= 32'b0;
       ID_EX_predict_pc <= 32'b0;
       ID_EX_is_valid <= 1'b0;
+      ID_EX_pht_idx <= 5'b0;
     end
     else begin
       ID_EX_mem_read <= mem_read;
@@ -292,6 +348,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_is_jalr <= is_jalr;
       ID_EX_branch <= branch;
       ID_EX_pc_to_reg <= pc_to_reg;
+      ID_EX_is_jump_or_branch <= is_jump_or_branch;
       
       ID_EX_rs1_data <= rs1_dout;
       ID_EX_rs2_data <= rs2_dout;
@@ -305,6 +362,7 @@ module cpu(input reset,       // positive reset signal
       ID_EX_pc <= IF_ID_pc;
       ID_EX_predict_pc <= IF_ID_predict_pc;
       ID_EX_is_valid <= IF_ID_is_valid;
+      ID_EX_pht_idx <= IF_ID_pht_idx;
     end
   end
 
