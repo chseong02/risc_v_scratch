@@ -16,7 +16,6 @@ module cpu(input reset,       // positive reset signal
   wire pc_update_cond;
   wire [31:0] pc_in;
   wire [31:0] pc_out;
-  wire [31:0] pc_add_4;
   wire is_flush;
   wire [31:0] imem_dout;
 
@@ -71,7 +70,6 @@ module cpu(input reset,       // positive reset signal
 
   wire [31:0] calculated_pc;
   wire alu_bcond;
-  wire pc_src;
   wire [31:0] alu_result;
 
   wire [31:0] alu_src_mux_out;

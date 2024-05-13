@@ -18,9 +18,6 @@ module BranchTargetBuffer (
 
     integer i;
 
-    reg [31:0] write_real_pc;
-    reg [4:0] read_btb_index;
-    reg [4:0] write_btb_index;
     always @(*) begin
         tag = tag_table[read_index];
         target_pc = branch_target_buffer_table[read_index];
