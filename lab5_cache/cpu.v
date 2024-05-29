@@ -81,6 +81,10 @@ module cpu(input reset,       // positive reset signal
 
   wire [31:0] reg_write_data;
 
+  wire cache_is_hit;
+  wire cache_is_output_valid;
+  wire cache_is_ready;
+
   /***** Register declarations *****/
   // You need to modify the width of registers
   // In addition, 
@@ -228,7 +232,7 @@ module cpu(input reset,       // positive reset signal
       IF_ID_is_valid <= 1'b0;
       IF_ID_pht_idx <= 5'b0;
     end
-    else if(IF_ID_write == 1'b1) begin
+    else if(IF_ID_write == 1'b1 && cache_is_ready) begin
       IF_ID_inst <= imem_dout;
       IF_ID_pc <= pc_out;
       IF_ID_predict_pc <= pc_in;
@@ -334,7 +338,13 @@ module cpu(input reset,       // positive reset signal
       ID_EX_is_valid <= 1'b0;
       ID_EX_pht_idx <= 5'b0;
     end
-    else begin
+    else if(cache_is_ready)begin
+      if(is_ecall)begin
+        $display("끝!");
+      end
+      // if(opcode!=0)begin
+      // $display("%d",opcode);
+      // end
       ID_EX_mem_read <= mem_read;
       ID_EX_mem_to_reg <= mem_to_reg;
       ID_EX_mem_write <= mem_write;
@@ -484,7 +494,7 @@ module cpu(input reset,       // positive reset signal
       EX_MEM_alu_out <= 32'b0;
       EX_MEM_dmem_data <= 32'b0;
     end
-    else begin
+    else if(cache_is_ready)begin
       EX_MEM_mem_read <= ID_EX_mem_read;
       EX_MEM_mem_to_reg <= ID_EX_mem_to_reg;
       EX_MEM_mem_write <= ID_EX_mem_write;
@@ -498,19 +508,31 @@ module cpu(input reset,       // positive reset signal
   end
 
   // ---------- Data Memory ----------
-  DataMemory dmem(
+  // DataMemory dmem(
+  //   .reset (reset),      // input
+  //   .clk (clk),        // input
+  //   .addr (EX_MEM_alu_out),       // input
+  //   .din (EX_MEM_dmem_data),        // input
+  //   .mem_read (EX_MEM_mem_read),   // input
+  //   .mem_write (EX_MEM_mem_write),  // input
+  //   .dout (dmem_dout)        // output
+  // );
+  Cache cache(
     .reset (reset),      // input
     .clk (clk),        // input
+    .is_input_valid(EX_MEM_mem_read || EX_MEM_mem_write),
     .addr (EX_MEM_alu_out),       // input
     .din (EX_MEM_dmem_data),        // input
-    .mem_read (EX_MEM_mem_read),   // input
-    .mem_write (EX_MEM_mem_write),  // input
+    .mem_rw (EX_MEM_mem_write),  // input
+    .is_ready(cache_is_ready),
+    .is_output_valid(cache_is_output_valid),
+    .is_hit(cache_is_hit),
     .dout (dmem_dout)        // output
   );
 
   // Update MEM/WB pipeline registers here
   always @(posedge clk) begin
-    if (reset) begin
+    if (reset || !cache_is_ready) begin
       MEM_WB_mem_to_reg <= 1'b0;
       MEM_WB_reg_write <= 1'b0;
       MEM_WB_is_halted <= 1'b0;
