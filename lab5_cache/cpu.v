@@ -233,7 +233,6 @@ module cpu(input reset,       // positive reset signal
       IF_ID_pht_idx <= 5'b0;
     end
     else if(IF_ID_write == 1'b1 && cache_is_ready) begin
-      $display(pc_in);
       IF_ID_inst <= imem_dout;
       IF_ID_pc <= pc_out;
       IF_ID_predict_pc <= pc_in;
@@ -344,11 +343,7 @@ module cpu(input reset,       // positive reset signal
     end
     else if(cache_is_ready)begin
       if(is_ecall)begin
-        $display("끝!");
       end
-      // if(opcode!=0)begin
-      // $display("%d",opcode);
-      // end
       ID_EX_mem_read <= mem_read;
       ID_EX_mem_to_reg <= mem_to_reg;
       ID_EX_mem_write <= mem_write;
