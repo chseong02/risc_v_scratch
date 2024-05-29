@@ -233,7 +233,7 @@ module cpu(input reset,       // positive reset signal
       IF_ID_pht_idx <= 5'b0;
     end
     else if(IF_ID_write == 1'b1 && cache_is_ready) begin
-      
+      $display(pc_in);
       IF_ID_inst <= imem_dout;
       IF_ID_pc <= pc_out;
       IF_ID_predict_pc <= pc_in;
@@ -241,7 +241,7 @@ module cpu(input reset,       // positive reset signal
       IF_ID_pht_idx <= pht_idx;
     end
     else begin
-      $display(pc_in);
+      
     end
   end
 

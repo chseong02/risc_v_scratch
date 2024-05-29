@@ -44,12 +44,14 @@ module Cache #(parameter LINE_SIZE = 16,
   reg do_not_need_replace;
   reg is_dirty;
   reg [((`CLOG2(NUM_WAYS))-1):0] next_largest_way;
+
+  reg write_delay;
   
   // Instantiate data memory
   DataMemory #(.BLOCK_SIZE(LINE_SIZE)) data_mem(
     .reset(reset),
     .clk(clk),
-    .is_input_valid(is_input_valid && !is_loading && !is_internal_hit),
+    .is_input_valid(is_input_valid && !is_loading && !is_internal_hit && !write_delay),
     .addr(!is_dirty ? (({tag_table[addr_idx][replace_target_way],addr[((`CLOG2(NUM_SETS))+(`CLOG2(LINE_SIZE))-1):0]})>>(`CLOG2(LINE_SIZE))) :(addr>>(`CLOG2(LINE_SIZE)))),        // NOTE: address must be shifted by CLOG2(LINE_SIZE)
     .mem_read(!is_dirty),
     .mem_write(is_dirty),
@@ -76,15 +78,19 @@ module Cache #(parameter LINE_SIZE = 16,
     is_loading = !(is_data_mem_ready);
     dout = 32'b0;
     is_output_valid = 1'b0;
-    if(is_input_valid && !is_loading) begin
-      
+    is_ready = !is_input_valid;
+    if(is_input_valid&&!is_loading) begin
+      $display("여기까진?");
       for(i=0; i<NUM_WAYS; i=i+1) begin
         if(addr_tag == tag_table[addr_idx][i] && valid_bit_table[addr_idx][i]) begin
           is_internal_hit = 1'b1;
           is_output_valid = 1'b1;
+          is_ready = 1'b1;
           // read
           if(mem_rw == 1'b0) begin
             dout = data_table[addr_idx][i][((32'(addr_bo)*4+32'(addr_g))*8)+:32];
+            $display(dout);
+            $display("이거");
           end
         end
       end
@@ -105,8 +111,9 @@ module Cache #(parameter LINE_SIZE = 16,
   always @(posedge clk) begin
     if(reset) begin
       is_have_been_miss <= 1'b0;
-      is_ready <= 1'b1;
+      //is_ready <= 1'b1;
       next_largest_way <= 1'b0;
+      write_delay <= 1'b0;
       for(i=0; i<NUM_SETS; i=i+1) begin
         for(j=0; j<NUM_WAYS; j=j+1) begin
           tag_table[i][j] <= (32-(`CLOG2(NUM_SETS))-(`CLOG2(LINE_SIZE)))'(0);
@@ -118,8 +125,9 @@ module Cache #(parameter LINE_SIZE = 16,
       end
     end
     else if(!is_input_valid) begin
-      is_ready <= 1'b1;
+      //is_ready <= 1'b1;
       is_have_been_miss<=1'b0;
+      write_delay<=1'b0;
     end
     else if(is_internal_hit && is_input_valid) begin
       for(i=0; i<NUM_WAYS; i=i+1) begin
@@ -128,21 +136,26 @@ module Cache #(parameter LINE_SIZE = 16,
         end
       end
       is_have_been_miss<=1'b0;
-      is_ready <= 1'b1;
+      //is_ready <= 1'b1;
+      write_delay<=1'b0;
     end
     //miss
     else if(is_input_valid && !is_internal_hit && !is_loading)begin
       is_have_been_miss <= 1'b1;
-      is_ready <= 1'b0;
-
+      //is_ready <= 1'b0;
+      if(!is_dirty&&mem_rw)begin
+        write_delay <= 1'b1;
+      end
+$display(mem_is_output_valid);
       //dirty
       if(is_dirty&&dirty_table[addr_idx][replace_target_way])begin
         dirty_table[addr_idx][replace_target_way] <= 1'b0;
         valid_bit_table[addr_idx][replace_target_way] <= 1'b0;
       end
-
+      
       //get data from dm
       else if(is_have_been_miss&&(mem_is_output_valid)) begin
+        $display(mem_dout);
         //빈공간 있을 때 + dirty 처리 이후
         if(do_not_need_replace)begin
           for(i=0; i<NUM_WAYS; i=i+1) begin
@@ -156,6 +169,7 @@ module Cache #(parameter LINE_SIZE = 16,
           end
         end
         else begin
+
           recent_use_bit_table[addr_idx] <= (`CLOG2(NUM_WAYS))'(replace_target_way);
           data_table[addr_idx][replace_target_way]<=mem_dout;
           valid_bit_table[addr_idx][replace_target_way]<=1'b1;
