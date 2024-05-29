@@ -156,7 +156,7 @@ module cpu(input reset,       // positive reset signal
     .reset(reset),         // input (Use reset to initialize PC. Initial value must be 0)
     .clk(clk),             // input
     .in(pc_in),            // input
-    .cond(pc_update_cond), // input
+    .cond(pc_update_cond && cache_is_ready), // input
     .out(pc_out)           // output
   );
   
@@ -233,11 +233,15 @@ module cpu(input reset,       // positive reset signal
       IF_ID_pht_idx <= 5'b0;
     end
     else if(IF_ID_write == 1'b1 && cache_is_ready) begin
+      
       IF_ID_inst <= imem_dout;
       IF_ID_pc <= pc_out;
       IF_ID_predict_pc <= pc_in;
       IF_ID_is_valid <= 1'b1;
       IF_ID_pht_idx <= pht_idx;
+    end
+    else begin
+      $display(pc_in);
     end
   end
 

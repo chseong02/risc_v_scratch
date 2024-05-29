@@ -42,6 +42,7 @@ module Cache #(parameter LINE_SIZE = 16,
   reg is_internal_hit;
   reg is_have_been_miss;
   reg do_not_need_replace;
+  reg is_dirty;
   reg [((`CLOG2(NUM_WAYS))-1):0] next_largest_way;
   
   // Instantiate data memory
@@ -49,10 +50,10 @@ module Cache #(parameter LINE_SIZE = 16,
     .reset(reset),
     .clk(clk),
     .is_input_valid(is_input_valid && !is_loading && !is_internal_hit),
-    .addr(!do_not_need_replace ? (({tag_table[addr_idx][replace_target_way],addr[((`CLOG2(NUM_SETS))+(`CLOG2(LINE_SIZE))-1):0]})>>(`CLOG2(LINE_SIZE))) :(addr>>(`CLOG2(LINE_SIZE)))),        // NOTE: address must be shifted by CLOG2(LINE_SIZE)
-    .mem_read(do_not_need_replace),
-    .mem_write(!do_not_need_replace),
-    .din(!do_not_need_replace?data_table[addr_idx][replace_target_way]:mem_din),
+    .addr(!is_dirty ? (({tag_table[addr_idx][replace_target_way],addr[((`CLOG2(NUM_SETS))+(`CLOG2(LINE_SIZE))-1):0]})>>(`CLOG2(LINE_SIZE))) :(addr>>(`CLOG2(LINE_SIZE)))),        // NOTE: address must be shifted by CLOG2(LINE_SIZE)
+    .mem_read(!is_dirty),
+    .mem_write(is_dirty),
+    .din(is_dirty?data_table[addr_idx][replace_target_way]:mem_din),
 
     // is output from the data memory valid?
     .is_output_valid(mem_is_output_valid),
@@ -70,7 +71,7 @@ module Cache #(parameter LINE_SIZE = 16,
     addr_g = addr[1:0];
     replace_target_way = ~recent_use_bit_table[addr_idx];
     do_not_need_replace = 1'b0;
-    
+    is_dirty = 1'b0;
     is_internal_hit = 1'b0;
     is_loading = !(is_data_mem_ready);
     dout = 32'b0;
@@ -96,6 +97,9 @@ module Cache #(parameter LINE_SIZE = 16,
       end
     end
     is_hit = is_internal_hit && !is_have_been_miss;
+    if(!do_not_need_replace&&dirty_table[addr_idx][replace_target_way])begin
+        is_dirty= 1'b1;
+    end
   end
 
   always @(posedge clk) begin
@@ -132,13 +136,14 @@ module Cache #(parameter LINE_SIZE = 16,
       is_ready <= 1'b0;
 
       //dirty
-      if(!do_not_need_replace&&dirty_table[addr_idx][replace_target_way])begin
+      if(is_dirty&&dirty_table[addr_idx][replace_target_way])begin
         dirty_table[addr_idx][replace_target_way] <= 1'b0;
         valid_bit_table[addr_idx][replace_target_way] <= 1'b0;
       end
 
       //get data from dm
-      else if(is_have_been_miss&&(mem_is_output_valid||is_data_mem_ready)) begin
+      else if(is_have_been_miss&&(mem_is_output_valid)) begin
+        //빈공간 있을 때 + dirty 처리 이후
         if(do_not_need_replace)begin
           for(i=0; i<NUM_WAYS; i=i+1) begin
             if(!valid_bit_table[addr_idx][i]&&i<=next_largest_way) begin
