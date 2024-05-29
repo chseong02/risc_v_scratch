@@ -1,8 +1,8 @@
 `include "CLOG2.v"
 
 module Cache #(parameter LINE_SIZE = 16,
-               parameter NUM_SETS = 16,
-               parameter NUM_WAYS = 1) (
+               parameter NUM_SETS = 8,
+               parameter NUM_WAYS = 2) (
     input reset,
     input clk,
 
@@ -46,7 +46,7 @@ module Cache #(parameter LINE_SIZE = 16,
   reg [((`CLOG2(NUM_WAYS))-1):0] next_largest_way;
 
   reg write_delay;
-  reg have_been_dirty;
+  reg dirty_fin;
 
   // Instantiate data memory
   DataMemory #(.BLOCK_SIZE(LINE_SIZE)) data_mem(
@@ -141,7 +141,7 @@ module Cache #(parameter LINE_SIZE = 16,
     else if(is_input_valid && !is_internal_hit && !is_loading)begin
       is_have_been_miss <= 1'b1;
       //is_ready <= 1'b0;
-      if(!is_dirty&&mem_rw)begin
+      if(!is_dirty&&mem_rw&&!(is_have_been_miss&&(!mem_is_output_valid)&&is_data_mem_ready))begin
         write_delay <= 1'b1;
       end
       //dirty
@@ -151,12 +151,13 @@ module Cache #(parameter LINE_SIZE = 16,
       end
       
       //get data from dm
+      
       else if(is_have_been_miss&&(mem_is_output_valid)) begin
         //빈공간 있을 때 + dirty 처리 이후
         if(do_not_need_replace)begin
           for(i=0; i<NUM_WAYS; i=i+1) begin
             if(!valid_bit_table[addr_idx][i]&&i<=next_largest_way) begin
-              next_largest_way <= 1'b0;//((NUM_WAYS-1) >next_largest_way)?(next_largest_way+1) : (`CLOG2(NUM_WAYS))'(NUM_WAYS-1);
+              next_largest_way <= ((NUM_WAYS-1) >next_largest_way)?(next_largest_way+1) : (`CLOG2(NUM_WAYS))'(NUM_WAYS-1);
               recent_use_bit_table[addr_idx] <= (`CLOG2(NUM_WAYS))'(i);
               data_table[addr_idx][i]<=mem_dout;
               valid_bit_table[addr_idx][i]<=1'b1;
@@ -166,12 +167,14 @@ module Cache #(parameter LINE_SIZE = 16,
           end
         end
         else begin
-
           recent_use_bit_table[addr_idx] <= (`CLOG2(NUM_WAYS))'(replace_target_way);
           data_table[addr_idx][replace_target_way]<=mem_dout;
           valid_bit_table[addr_idx][replace_target_way]<=1'b1;
           tag_table[addr_idx][replace_target_way]<=addr_tag;
         end
+      end
+      if(is_have_been_miss&&(!mem_is_output_valid)&&is_data_mem_ready)begin
+        write_delay <= 1'b0;
       end
     end
     //write
