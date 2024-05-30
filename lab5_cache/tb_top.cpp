@@ -28,7 +28,7 @@ void next_cycle(Vtop* dut, VerilatedVcdC* m_trace) {
 
 int main(int argc, char** argv, char** env) {
     // TO DO : CHANGE "filename" TO PROVIDED "answer_*.txt" PATH
-    string filename = "./student_tb/opt_ripes_result.txt";
+    string filename = "./student_tb/naive_ripes_result.txt";
     ifstream file(filename);
     stringstream ss;
     string reg_hex;
@@ -79,8 +79,6 @@ int main(int argc, char** argv, char** env) {
     cout << "FINAL REGISTER OUTPUT" << endl;
     
     // Print your Hit ratio
-    cout << "FULL STACK: " <<(dut->mem_access_all)   << endl;
-    cout << "HIT STACK: " <<(dut->hit_stack)  << endl;
     cout << "HIT RATIO: " <<(1.0*(dut->hit_stack))/(dut->mem_access_all)   << endl;
     //
 
