@@ -79,6 +79,9 @@ int main(int argc, char** argv, char** env) {
     cout << "FINAL REGISTER OUTPUT" << endl;
     
     // Print your Hit ratio
+    cout << "FULL STACK: " <<(dut->mem_access_all)   << endl;
+    cout << "HIT STACK: " <<(dut->hit_stack)  << endl;
+    cout << "HIT RATIO: " <<(1.0*(dut->hit_stack))/(dut->mem_access_all)   << endl;
     //
 
     for (int i = 0; i < 32; i = i + 1) {

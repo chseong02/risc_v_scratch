@@ -11,7 +11,9 @@
 module cpu(input reset,       // positive reset signal
            input clk,         // clock signal
            output is_halted, // Whehther to finish simulation
-           output [31:0]print_reg[0:31]); // Whehther to finish simulation
+           output [31:0]print_reg[0:31],
+           output [31:0] print_mem_access_all,
+           output [31:0] print_hit_stack); // Whehther to finish simulation
   /***** Wire declarations *****/
   wire pc_update_cond;
   wire [31:0] pc_in;
@@ -150,6 +152,12 @@ module cpu(input reset,       // positive reset signal
   reg [31:0] MEM_WB_mem_to_reg_src_1;
   reg [31:0] MEM_WB_mem_to_reg_src_2;
   reg [4:0] MEM_WB_rd;
+
+  reg [31:0] mem_access_all;
+  reg [31:0] hit_stack;
+  
+  assign print_mem_access_all = mem_access_all; 
+  assign print_hit_stack = hit_stack; 
   // ---------- Update program counter ----------
   // PC must be updated on the rising edge (positive edge) of the clock.
   ConditionalRegister pc(
@@ -534,6 +542,9 @@ module cpu(input reset,       // positive reset signal
       MEM_WB_mem_to_reg_src_1 <= 32'b0;
       MEM_WB_mem_to_reg_src_2 <= 32'b0;
       MEM_WB_rd <= 5'b0;
+
+      hit_stack <= 32'b0;
+      mem_access_all <= 32'b0;
     end
     else if(cache_is_ready)begin
       MEM_WB_mem_to_reg <= EX_MEM_mem_to_reg;
@@ -543,6 +554,8 @@ module cpu(input reset,       // positive reset signal
       MEM_WB_mem_to_reg_src_1 <= EX_MEM_alu_out;
       MEM_WB_mem_to_reg_src_2 <= dmem_dout;
       MEM_WB_rd <= EX_MEM_rd;
+      hit_stack <= hit_stack + 32'(cache_is_hit);
+      mem_access_all <= mem_access_all + 32'(EX_MEM_mem_read || EX_MEM_mem_write);
     end
   end
 
