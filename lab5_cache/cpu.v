@@ -232,15 +232,12 @@ module cpu(input reset,       // positive reset signal
       IF_ID_is_valid <= 1'b0;
       IF_ID_pht_idx <= 5'b0;
     end
-    else if(IF_ID_write == 1'b1 && cache_is_ready) begin
+    else if((IF_ID_write == 1'b1) && cache_is_ready) begin
       IF_ID_inst <= imem_dout;
       IF_ID_pc <= pc_out;
       IF_ID_predict_pc <= pc_in;
       IF_ID_is_valid <= 1'b1;
       IF_ID_pht_idx <= pht_idx;
-    end
-    else begin
-      
     end
   end
 
@@ -313,7 +310,7 @@ module cpu(input reset,       // positive reset signal
 
   // Update ID/EX pipeline registers here
   always @(posedge clk) begin
-    if (reset || is_nop || is_flush) begin
+    if (reset || cache_is_ready&&is_nop || is_flush) begin
       ID_EX_mem_read <= 1'b0;
       ID_EX_mem_to_reg <= 1'b0;
       ID_EX_mem_write <= 1'b0;
@@ -342,8 +339,6 @@ module cpu(input reset,       // positive reset signal
       ID_EX_pht_idx <= 5'b0;
     end
     else if(cache_is_ready)begin
-      if(is_ecall)begin
-      end
       ID_EX_mem_read <= mem_read;
       ID_EX_mem_to_reg <= mem_to_reg;
       ID_EX_mem_write <= mem_write;
@@ -531,7 +526,7 @@ module cpu(input reset,       // positive reset signal
 
   // Update MEM/WB pipeline registers here
   always @(posedge clk) begin
-    if (reset || !cache_is_ready) begin
+    if (reset) begin
       MEM_WB_mem_to_reg <= 1'b0;
       MEM_WB_reg_write <= 1'b0;
       MEM_WB_is_halted <= 1'b0;
@@ -540,7 +535,7 @@ module cpu(input reset,       // positive reset signal
       MEM_WB_mem_to_reg_src_2 <= 32'b0;
       MEM_WB_rd <= 5'b0;
     end
-    else begin
+    else if(cache_is_ready)begin
       MEM_WB_mem_to_reg <= EX_MEM_mem_to_reg;
       MEM_WB_reg_write <= EX_MEM_reg_write;
       MEM_WB_is_halted <= EX_MEM_is_halted;
