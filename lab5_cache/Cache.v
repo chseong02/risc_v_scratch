@@ -83,30 +83,22 @@ module Cache #(parameter LINE_SIZE = 16,
         // read hit 
         if(mem_rw == 1'b0) begin
           is_output_valid = 1'b1;
-          dout = data_table[addr_idx][((32'(addr_bo)*4+32'(addr_g))*8)+:32];
+          dout = data_table[addr_idx][(addr_bo*32)+:32];
+          //dout = data_table[addr_idx][((32'(addr_bo)*4+32'(addr_g))*8)+:32];
         end
       end
       // miss
       else begin
         is_request_to_mem = !is_hit || status== 3'd1;
         // read miss
-        if(mem_rw == 1'b0) begin
-          if(status==3'd0&&is_dirty) begin
-            request_addr = {tag_table[addr_idx],addr[((`CLOG2(NUM_SETS))+(`CLOG2(LINE_SIZE))-1):0]};
-          end
-          else if(status==3'd0&&!is_dirty) begin
-            request_addr = addr;
-          end
-          else if(status==3'd1)begin
-            request_addr = addr;
-          end
+        if(status==3'd0&&is_dirty) begin
+          request_addr = {tag_table[addr_idx],addr[((`CLOG2(NUM_SETS))+(`CLOG2(LINE_SIZE))-1):0]};
         end
-        // write miss
-        else begin
-          if(status==3'd0) begin
-            if(status==3'd0&&is_dirty) begin
-            end
-          end
+        else if(status==3'd0&&!is_dirty) begin
+          request_addr = addr;
+        end
+        else if(status==3'd1)begin
+          request_addr = addr;
         end
       end
     end
